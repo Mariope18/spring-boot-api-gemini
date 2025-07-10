@@ -46,6 +46,27 @@ class TodoServiceImplTest {
         assertNotNull(risultato); // Il risultato non deve essere nullo
         assertEquals(1, risultato.size()); // La lista deve contenere esattamente 1 elemento
     }
+    @Test // (JUnit) Indica che questo è un metodo di test
+    void quandoChiamoFindAllByUser_restituisceLaListaVuota() {
+        // --- 1. GIVEN (Dato che...) ---
+        // Prepariamo i dati finti e programmiamo il comportamento del nostro mock.
+        User utente = new User(); // Un finto utente
+
+        // Diciamo a Mockito: "Quando il metodo 'findByUser' del finto repository viene chiamato
+        // con questo specifico utente, ALLORA fai finta di restituire una lista vuota
+        when(todoRepository.findByUser(utente)).thenReturn(List.of());
+
+
+        // --- 2. WHEN (Quando...) ---
+        // Eseguiamo il metodo REALE del service che vogliamo testare.
+        List<Todo> risultato = todoService.findAllByUser(utente);
+
+
+        // --- 3. THEN (Allora...) ---
+        // Verifichiamo con JUnit che il risultato sia quello che ci aspettiamo.
+        assertNotNull(risultato); // Il risultato non deve essere nullo
+        assertEquals(0, risultato.size()); // Verifica che la lista sia vuota
+    }
     @Test
     void quandoUtenteAggiornaProprioTodo_alloraUpdateHaSuccesso() {
         // --- GIVEN (Dato che...) ---
@@ -138,39 +159,68 @@ class TodoServiceImplTest {
         verify(todoRepository, times(1)).save(any(Todo.class));
     }
     @Test
-    void findByIdAndUser_successo(){
+    void quandoFindByIdAndUserTrovaIlTodo_restituisceOptionalPieno(){
 
-        Todo todo = new Todo();
+        Todo todoDaTrovare = new Todo();
+        todoDaTrovare.setId(10L);
         User user = new User();
+        todoDaTrovare.setUser(user);
 
-        when(todoRepository.findByIdAndUser(todo.getId(),user)).thenReturn(Optional.of(new Todo()));
+        when(todoRepository.findByIdAndUser(10L,user)).thenReturn(Optional.of(todoDaTrovare));
 
-        Optional<Todo> todoEsistente = todoService.findByIdAndUser(todo.getId(),user);
+        Optional<Todo> risultatoOptional = todoService.findByIdAndUser(10L,user);
 
-        assertNotNull(todoEsistente);
+        assertTrue(risultatoOptional.isPresent());
+        assertEquals(todoDaTrovare, risultatoOptional.get());
     }
-
     @Test
-    void findByIdAndUser_fallito(){
+    void quandoFindByIdAndUserNonTrovaIlTodo_restituisceOptionalVuoto(){
 
-        Todo todo = new Todo();
+        // --- GIVEN ---
+        // Ci servono solo i parametri di input per il nostro metodo
         User user = new User();
+        Long idInesistente = 20L;
 
-        Todo todo2 = new Todo();
+        when(todoRepository.findByIdAndUser(idInesistente,user)).thenReturn(Optional.empty());
 
-        when(todoRepository.findByIdAndUser(todo.getId(),user)).thenReturn(Optional.of(new Todo()));
+        Optional<Todo> risultato  = todoService.findByIdAndUser(idInesistente,user);
 
-        Optional<Todo> todoEsistente = todoService.findByIdAndUser(todo2.getId(),user);
-
-        assertNotNull(todoEsistente);
+        assertTrue(risultato.isEmpty(), "L'Optional dovrebbe essere vuoto quando il Todo non viene trovato");
     }
-
     @Test
-    void deleteById_successo() {
+    void quandoDeleteHaSuccesso_restituisceTrue() {
 
-        Todo todo = new Todo();
+        // GIVEN
         User user = new User();
+        Long todoIdDaCancellare = 1L; // Usiamo un ID finto e NON NULLO
 
+        // Stiamo insegnando a Mockito come comportarsi per un ID reale
+        when(todoRepository.deleteByIdAndUser(todoIdDaCancellare,user)).thenReturn(1);
 
+        // WHEN
+        boolean risultato = todoService.deleteById(todoIdDaCancellare, user);
+
+        // THEN
+        assertTrue(risultato);
+    }
+    @Test
+    void quandoDeleteFallisce_restituisceFalse() {
+
+        // --- GIVEN ---
+        User utenteNonProprietario = new User();
+        Long todoId = 1L;
+
+        // Programmiamo il mock per il caso di fallimento: la query non ha cancellato nulla (restituisce 0).
+        when(todoRepository.deleteByIdAndUser(todoId, utenteNonProprietario)).thenReturn(0);
+
+        // --- WHEN ---
+        boolean risultato = todoService.deleteById(todoId, utenteNonProprietario);
+
+        // --- THEN ---
+        // Usiamo assertFalse, è più leggibile di assertEquals(false, ...)
+        assertFalse(risultato, "Il metodo dovrebbe restituire false in caso di fallimento");
+
+        // Aggiungiamo una verifica per essere sicuri
+        verify(todoRepository, times(1)).deleteByIdAndUser(todoId, utenteNonProprietario);
     }
 }
