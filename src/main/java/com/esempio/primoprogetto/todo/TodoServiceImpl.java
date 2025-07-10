@@ -1,6 +1,9 @@
 package com.esempio.primoprogetto.todo;
 
+import com.esempio.primoprogetto.admin.AdminTodoCreateRequest;
 import com.esempio.primoprogetto.user.User;
+import com.esempio.primoprogetto.user.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +16,9 @@ public class TodoServiceImpl implements TodoService {
 
     @Autowired
     private TodoRepository todoRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Override
     public List<Todo> findAllByUser(User user) {
@@ -52,6 +58,52 @@ public class TodoServiceImpl implements TodoService {
                     todoEsistente.setCompletato(todoDetails.isCompletato());
                     return todoRepository.save(todoEsistente);
                 });
+    }
+
+    @Override
+    public List<Todo> findAllAsAdmin() {
+        return todoRepository.findAll();
+    }
+
+    @Override
+    @Transactional
+    public Optional<Todo> updateTodoAsAdmin(Long id, Todo todoDetails) {
+        return todoRepository.findById(id)
+                .map(todoEsistente -> {
+                    if(todoDetails.getTitolo() != null){
+                        todoEsistente.setTitolo(todoDetails.getTitolo());
+                    }
+                    todoEsistente.setCompletato(todoDetails.isCompletato());
+                    return todoRepository.save(todoEsistente);
+                });
+    }
+
+    @Override
+    @Transactional
+    public boolean deleteTodoAsAdmin(Long id) {
+        if(todoRepository.existsById(id)){
+            todoRepository.deleteById(id);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public Todo createTodoAsAdmin(AdminTodoCreateRequest request) {
+        // 1. Cerca l'utente proprietario tramite l'ID fornito nella richiesta
+        User proprietario = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new EntityNotFoundException("Utente non trovato con id: " + request.getUserId()));
+
+        // 2. Crea il nuovo oggetto Todo
+        Todo nuovoTodo = new Todo();
+        nuovoTodo.setTitolo(request.getTitolo());
+        nuovoTodo.setCompletato(request.isCompletato());
+
+        // 3. Associa il Todo all'utente proprietario trovato
+        nuovoTodo.setUser(proprietario);
+
+        // 4. Salva e restituisci il nuovo Todo
+        return todoRepository.save(nuovoTodo);
     }
 
 
