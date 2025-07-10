@@ -27,7 +27,7 @@ public class TodoController {
         //Todo todo = todoService.findById(id,user);
         // Se il todo esiste, restituisci 200 OK con il todo, altrimenti 404 Not Found
         //return todo.map(ResponseEntity::ok).orElseThrow(() -> new EntityNotFoundException("Todo non trovato con id: "+id));
-        return todoService.findById(id,user)
+        return todoService.findByIdAndUser(id,user)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }

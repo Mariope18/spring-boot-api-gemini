@@ -20,7 +20,7 @@ public class TodoServiceImpl implements TodoService {
     }
 
     @Override
-    public Optional<Todo> findById(Long id, User user) {
+    public Optional<Todo> findByIdAndUser(Long id, User user) {
         return todoRepository.findByIdAndUser(id,user);
     }
 
