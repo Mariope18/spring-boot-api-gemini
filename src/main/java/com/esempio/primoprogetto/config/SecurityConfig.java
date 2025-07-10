@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -24,31 +25,38 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()) // Disabilita CSRF, non necessario per API stateless
+                // Disabilitiamo CSRF, che è standard per API stateless
+                .csrf(csrf -> csrf.disable())
+
+                // Definiamo le regole di autorizzazione per le richieste HTTP
                 .authorizeHttpRequests(auth -> auth
-                        // 1. Usa PathRequest.toH2Console() per permettere l'accesso alla console H2
-                        // Questo è il modo moderno e raccomandato, gestisce tutti i path necessari.
-                        .requestMatchers(PathRequest.toH2Console()).permitAll()
+                        // Elenco di tutti i percorsi che devono essere PUBBLICI
+                        .requestMatchers(
+                                "/api/v1/auth/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/h2-console/**"
+                        ).permitAll()
 
-                        // 2. Permetti l'accesso agli endpoint di autenticazione
-                        .requestMatchers("/api/v1/auth/**").permitAll() // Pubblico per tutti
-
-                        // 3. Proteggi gli altri endpoint con i ruoli
+                        // Regole specifiche per i ruoli
                         .requestMatchers("/todos/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
 
-                        // 4. Qualsiasi altra richiesta deve essere autenticata
+                        // Qualsiasi altra richiesta deve essere autenticata
                         .anyRequest().authenticated()
                 )
-                // Configurazione della sessione (corretta per API stateless)
-                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Imposta la gestione della sessione su STATELESS
+
+                // Gestione della sessione: deve essere STATELESS perché usiamo JWT
+                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 // Disabilitiamo la protezione dei frame per permettere alla console H2 di funzionare
                 .headers(headers -> headers
-                        .frameOptions(frameOptions -> frameOptions.disable())) // <-- AGGIUNGI QUESTO BLOCCO
+                        .frameOptions(frameOptions -> frameOptions.disable()))
 
-                // Impostiamo il provider di autenticazione e il nostro filtro JWT
+                // Impostiamo il nostro provider di autenticazione
                 .authenticationProvider(authenticationProvider)
+
+                // Aggiungiamo il nostro filtro JWT prima del filtro standard di Spring
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
